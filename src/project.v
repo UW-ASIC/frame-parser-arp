@@ -8,9 +8,9 @@
 module tt_um_frame_parser_arp (
     input  wire [63:0]  tdata,
     input  wire [7:0]   tkeep,   
-    input  wire         tvalid,   // IOs: Input path
-    output wire         tready,  // IOs: Output path
-    input  wire         tlast,   // IOs: Enable path (active high: 0=input, 1=output)
+    input  wire         tvalid,  
+    output wire         tready,  
+    input  wire         tlast,   
     input  wire         tuser_0,
 
     input  wire       ena,      // always 1 when the design is powered
@@ -219,6 +219,9 @@ module tt_um_frame_parser_arp (
 
     // VLAN_Frame En Handling
     is_vlan_frame = vlan_remembered || vlan_detected;
+
+    // Ready Signal: Always high
+    tready = 1'b1;
     
   end
 
