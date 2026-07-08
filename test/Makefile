@@ -5,8 +5,19 @@
 SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
-SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
+
+# 1. Change this from $(PWD)/../src to point to your RTL folder:
+SRC_DIR = $(PWD)/../RTL
+
+# 2. List all of your team's Verilog files here (separated by spaces, use backslashes to break lines):
+PROJECT_SOURCES = arp_responder_reply_beat_mux.v \
+                  arp_responder_request_capture.v \
+                  arp_responder_tx_serializer.v \
+                  arp_responder_validate_match.v \
+                  frame_parser_frame_control.v \
+                  frame_parser_header_datapath.v \
+                  frame_parser_input_stage.v \
+                  frame_parser_metadata_assem.v
 
 ifneq ($(GATES),yes)
 
