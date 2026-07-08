@@ -5,32 +5,32 @@
 
 `default_nettype none
 
-module tt_um_frame_parser_arp (
-    input  wire [63:0]  tdata,
-    input  wire [7:0]   tkeep,   
-    input  wire         tvalid,  
-    output wire         tready,  
-    input  wire         tlast,   
-    input  wire         tuser_0,
+module frame_parser_frame_control (
+    input  wire [63:0] tdata,
+    input  wire [7:0]  tkeep,   
+    input  wire        tvalid,   
+    output reg         tready,  
+    input  wire        tlast,   
+    input  wire        tuser_0,
 
-    input  wire       ena,      // always 1 when the design is powered
-    input  wire       clk,      // clock
-    input  wire       rst_n     // reset_n - low to reset
+    input  wire        ena,      // always 1 when the design is powered
+    input  wire        clk,      // clock
+    input  wire        rst_n,    // reset_n - low to reset
 
-    input  wire [15:0] ethertype;
-    output reg        is_vlan_frame;
-    output wire       en_dst_mac, 
-    output wire       en_src_mac_part1, 
-    output wire       en_src_mac_part2,
-    output wire       en_ethertype, 
-    output wire       en_data,
+    input  wire [15:0] ethertype,
+    output reg         is_vlan_frame,
+    output reg         en_dst_mac, 
+    output reg         en_src_mac_part1, 
+    output reg         en_src_mac_part2,
+    output reg         en_ethertype, 
+    output reg         en_data,
 
-    output reg      drop
+    output reg         drop
 );
 
 
   // List all unused inputs cleanly to satisfy the linters
-  wire _unused = &ena;
+  wire _unused = &tdata & ena;
 
   // States
   localparam IDLE         = 3'd0;
