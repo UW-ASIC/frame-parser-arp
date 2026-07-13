@@ -5,7 +5,7 @@ module frame_parser_input (
     input wire        rst_n,
 
     // inputs from MAC
-    input wire [64:0] tdata,
+    input wire [63:0] tdata,
     input wire [7:0]  tkeep,
     input wire        tvalid,
     input wire        tlast,
@@ -19,7 +19,7 @@ module frame_parser_input (
     input wire        header_ready,
 
     // outputs to frame control + header datapath
-    output reg [64:0] out_tdata,
+    output reg [63:0] out_tdata,
     output reg [7:0]  out_tkeep,
     output reg        out_tvalid,
     output reg        out_tlast,
