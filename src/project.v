@@ -1,46 +1,34 @@
-/*
- * Ethernet Header Extractor for UW-ASIC frame-parser-arp Tiny Tapeout project.
- *
- * This file uses the Tiny Tapeout / UW-ASIC top-level module skeleton:
- *   module tt_um_frame_parser_arp(ui_in, uo_out, uio_in, uio_out, uio_oe, ena, clk, rst_n)
- *
- * Input protocol, one byte per accepted clock:
- *   ui_in[7:0] = Ethernet frame byte in wire order
- *   uio_in[0]  = byte_valid
- *   uio_in[1]  = start_of_frame, asserted with byte 0
- *   uio_in[2]  = end_of_frame, asserted with final byte
- *
- * Output protocol:
- *   uio_out[3] = byte_ready
- *   uio_out[4] = header_done pulse
- *   uio_out[5] = frame_error, latched for current/last frame
- *   uio_out[6] = VLAN present for current/last parsed header
- *   uio_out[7] = metadata output byte valid
- *   uo_out     = serialized metadata byte while uio_out[7] is high
- *
- * Serialized metadata order:
- *   0..5   destination MAC, most-significant byte first
- *   6..11  source MAC, most-significant byte first
- *   12..13 EtherType, network byte order
- *   14..15 VLAN TCI, network byte order; zero when untagged
- *   16     status = {1'b0, frame_error, vlan_present, header_length[4:0]}
- *
- * Supported headers:
- *   - Ethernet II, 14-byte header
- *   - One IEEE 802.1Q VLAN tag with TPID 16'h8100, 18-byte header
- */
-
 `default_nettype none
 
-module tt_um_frame_parser_arp (
-    input  wire [7:0] ui_in,    // Dedicated inputs: Ethernet byte stream
-    output wire [7:0] uo_out,   // Dedicated outputs: serialized metadata byte
-    input  wire [7:0] uio_in,   // IO input path: valid/SOF/EOF controls
-    output wire [7:0] uio_out,  // IO output path: ready/status controls
-    output wire [7:0] uio_oe,   // IO enable path, active high: 0=input, 1=output
-    input  wire       ena,      // High when this design is selected
-    input  wire       clk,      // Clock
-    input  wire       rst_n     // Active-low reset
+module tt_um_header_extractor (
+    input  wire        clk,
+    input  wire        rst_n,
+
+    input wire [64:0] out_tdata,
+    input wire [7:0]  out_tkeep,
+    input wire        out_tvalid,
+    input wire        out_tlast,
+    input wire        out_tuser,
+
+    input wire        frame_ready,
+    input wire        header_ready
+    
+    //input  wire [7:0] ui_in,    // Dedicated inputs: Ethernet byte stream
+    //output wire [7:0] uo_out,   // Dedicated outputs: serialized metadata byte
+    //input  wire [7:0] uio_in,   // IO input path: valid/SOF/EOF controls
+    //output wire [7:0] uio_out,  // IO output path: ready/status controls
+    //output wire [7:0] uio_oe,   // IO enable path, active high: 0=input, 1=output
+    //input  wire       ena,      // High when this design is selected
+    //input  wire       clk,      // Clock
+    //input  wire       rst_n     // Active-low reset
+
+    output reg [15:0]    ethertype,
+    output reg           vlan_present,
+    output reg [47:0]    dst_mac,
+    output reg [47:0]    src_mac,
+
+    output reg           frame_error
+    
 );
 
     localparam [1:0] ST_IDLE  = 2'd0;
