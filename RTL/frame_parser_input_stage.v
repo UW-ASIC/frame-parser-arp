@@ -35,7 +35,7 @@ module frame_parser_input (
 
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      out_tdata <= 65'b0;
+      out_tdata <= 64'b0;
       out_tkeep <= 8'b0;
       out_tvalid <= 1'b0;
       out_tlast <= 1'b0;

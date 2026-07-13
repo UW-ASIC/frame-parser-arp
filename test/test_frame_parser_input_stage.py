@@ -9,8 +9,7 @@
 import cocotb
 from cocotb.triggers import Timer
 
-
-@cocotb.test()
-async def test_placeholder(dut):
-    """Placeholder test — replace with real tests for this module."""
-    await Timer(1, unit="ns")
+# @cocotb.test()
+# async def test_placeholder(dut):
+#     """Placeholder test — replace with real tests for this module."""
+#     await Timer(1, unit="ns")
