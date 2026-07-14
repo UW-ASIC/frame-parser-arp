@@ -1,6 +1,6 @@
 `default_nettype none
 
-module tt_um_header_extractor (
+module frame_parser_header_datapath (
     input  wire        clk,
     input  wire        rst_n,
     input wire         ena,
