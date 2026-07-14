@@ -132,7 +132,8 @@ module frame_parser_header_datapath (
 wire _unused = &{
     ena,
     out_tkeep,
-    out_tlast
+    out_tlast,
+    is_vlan_frame
 };
 
 endmodule
