@@ -89,34 +89,38 @@ module frame_parser_frame_control (
   // FSM =======================================================================
   // Next State Logic
   always@(*) begin
-    case (present_state) 
+    if (tvalid) begin
+      case (present_state) 
 
-      IDLE        : begin
-        next_state = tvalid ? BEAT_1 : IDLE;
-      end
-      BEAT_1      : begin
-        next_state = tvalid ? BEAT_2 : BEAT_1;
-      end
-      BEAT_2      : begin
-        if (vlan_detected) begin  // checks directly, since is_vlan_frame updates next cycle
-          next_state = BEAT_3_VLAN;
-        end else begin
+        IDLE        : begin
+          next_state = BEAT_1;
+        end
+        BEAT_1      : begin
+          next_state = BEAT_2;
+        end
+        BEAT_2      : begin
+          if (vlan_detected) begin  // checks directly, since is_vlan_frame updates next cycle
+            next_state = BEAT_3_VLAN;
+          end else begin
+            next_state = WAIT_EOF;
+          end
+        end
+        BEAT_3_VLAN : begin
           next_state = WAIT_EOF;
         end
-      end
-      BEAT_3_VLAN : begin
-        next_state = WAIT_EOF;
-      end
-      WAIT_EOF    : begin
-        if (tlast) begin
-          next_state = IDLE;
-        end else begin
-          next_state = WAIT_EOF;
+        WAIT_EOF    : begin
+          if (tlast) begin
+            next_state = IDLE;
+          end else begin
+            next_state = WAIT_EOF;
+          end
         end
-      end
-      default : next_state = present_state;
+        default : next_state = present_state;
 
-    endcase
+      endcase
+    end else begin
+      next_state = present_state;
+    end
   end
 
 
