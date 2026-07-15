@@ -3,39 +3,111 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import RisingEdge, Timer
+
+# helper fcn to reset dut
+async def reset_dut(dut):
+    dut._log.info("Resetting")
+    dut.clk.value = 0
+    dut.rst_n.value = 0
+    dut.ena.value = 1
+    
+    # AXI-S Inputs
+    dut.tdata.value = 0
+    dut.tkeep.value = 0
+    dut.tvalid.value = 0
+    dut.tlast.value = 0
+    dut.tuser_0.value = 0
+    
+    # Metadata Inputs
+    dut.ethertype.value = 0
+
+    await Timer(20, units="ns")
+    dut.rst_n.value = 1
+    await Timer(10, units="ns")
+    await RisingEdge(dut.clk)
+    dut._log.info("Reset Complete")
 
 
 @cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
+async def test_standard_frame_pass(dut):
+    dut._log.info("Test Begin: Standard Frame Pass")
+    cocotb.startsoon(Clock(dut.clk, 10, units="ns").start())
+    await reset_dut(dut)
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, unit="us")
-    cocotb.start_soon(clock.start())
+    # idle state
+    dut._log.info("STATE: IDLE")
+    assert dut.is_vlan_frame.value == 0, "Failed; is_vlan_frame == 1, expected 0"
+    assert dut.en_dst_mac.value == 0,"Failed; en_dst_mac == 1, expected 0"
+    assert dut.en_src_mac_part1.value == 0, "Failed; en_src_mac_part1 == 1, expected 0"
+    assert dut.en_src_mac_part2.value == 0,"Failed; en_src_mac_part2 == 1, expected 0"
+    assert dut.en_ethertype.value == 0, "Failed; en_ethertype == 1, expected 0"
+    assert dut.en_data.value == 0,"Failed; en_data.value == 1, expected 0"
 
-    # Reset
-    dut._log.info("Reset")
-    dut.ena.value = 1
-    dut.ui_in.value = 0
-    dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
+    # beat1
+    dut.tvalid.value = 1
+    dut.tkeep.value = 0xFF
+    await RisingEdge(dut.clk)
+    assert dut.is_vlan_frame.value == 0, "Failed; is_vlan_frame == 1, expected 0"
+    assert dut.en_dst_mac.value == 1,"Failed; en_dst_mac == 0, expected 1"
+    assert dut.en_src_mac_part1.value == 1, "Failed; en_src_mac_part1 == 0, expected 1"
+    assert dut.en_src_mac_part2.value == 0,"Failed; en_src_mac_part2 == 1, expected 0"
+    assert dut.en_ethertype.value == 0, "Failed; en_ethertype == 1, expected 0"
+    assert dut.en_data.value == 0,"Failed; en_data.value == 1, expected 0"
 
-    dut._log.info("Test project behavior")
+    # beat2
+    await RisingEdge(dut.clk)
+    assert dut.is_vlan_frame.value == 0, "Failed; is_vlan_frame == 1, expected 0"
+    assert dut.en_dst_mac.value == 0,"Failed; en_dst_mac == 1, expected 0"
+    assert dut.en_src_mac_part1.value == 0, "Failed; en_src_mac_part1 == 0, expected 1"
+    assert dut.en_src_mac_part2.value == 1,"Failed; en_src_mac_part2 == 0, expected 1"
+    assert dut.en_ethertype.value == 1, "Failed; en_ethertype == 0, expected 1"
+    assert dut.en_data.value == 1,"Failed; en_data.value == 0, expected 1"
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 0
+    # wait eof
+    for i in range(5):
+        await RisingEdge(dut.clk)
+        assert dut.is_vlan_frame.value == 0, "Failed; is_vlan_frame == 1, expected 0"
+        assert dut.en_dst_mac.value == 0,"Failed; en_dst_mac == 1, expected 0"
+        assert dut.en_src_mac_part1.value == 0, "Failed; en_src_mac_part1 == 1, expected 0"
+        assert dut.en_src_mac_part2.value == 0,"Failed; en_src_mac_part2 == 0, expected 1"
+        assert dut.en_ethertype.value == 0, "Failed; en_ethertype == 1, expected 0"
+        assert dut.en_data.value == 1,"Failed; en_data.value == 1, expected 0"
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+    # Final Beat
+    dut.tlast.value = 1
+    dut.tuser_0.value = 0 # FCS good
+    await RisingEdge(dut.clk)
+    assert dut.drop.value == 0, "Incorrectly dropped valid 64B standard frame"
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 20
-    dut._log.info("top module test passed successfully!")
+    dut.tvalid.value = 1
+    dut.tlast.value = 0
+    await RisingEdge(dut.clk)
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+@cocotb.test()
+async def test_vlan_frame_pass(dut):
+    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    await reset_dut(dut)
+
+    # beat 1
+    dut.tvalid.value = 1
+    dut.tkeep.value = 0xFF
+    await RisingEdge(dut.clk)
+
+    # beat 2
+    dut.ethertype.value = 0x8100 
+    await RisingEdge(dut.clk)
+    
+    # beat 3 (vlan)
+    await RisingEdge(dut.clk)
+    assert dut.is_vlan_frame.value == 1, "Failed to flag VLAN frame"
+    assert dut.en_ethertype.value == 1, "en_ethertype should be high in VLAN state"
+
+    # Push to 64 bytes total
+    for _ in range(4):
+        await RisingEdge(dut.clk)
+        
+    dut.tlast.value = 1
+    await RisingEdge(dut.clk)
+    
+    assert dut.drop.value == 0, "Incorrectly dropped valid VLAN frame"
