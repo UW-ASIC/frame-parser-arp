@@ -129,7 +129,7 @@ def mac_gen() -> int:
     return random.getrandbits(48)
 
 
-async def input_driver(dut,eth_type: int,vlan_id: int,pcp: int,) -> None:
+async def input_driver(dut,frame_type: int,vlan_id: int,pcp: int,) -> None:
 
     await RisingEdge(dut.clk)
     dut.eof.value = random.randint(0, 1)
@@ -138,15 +138,15 @@ async def input_driver(dut,eth_type: int,vlan_id: int,pcp: int,) -> None:
 
     dut.dst_mac.value = mac_gen()
     dut.src_mac.value = mac_gen()
-
-    dut.ethertype.value = eth_type
+    
+    dut.frame_type.value = frame_type
     dut.vlan_id.value = vlan_id
     dut.pcp.value = pcp
 
     dut.frame_type.value = random.randint(0, 3)
 
 
-async def output_monitor(dut, ethertype_expected: int, vlan_expected: int, pcp_expected: int,) -> None:
+async def output_monitor(dut, frametype_expected: int, vlan_expected: int, pcp_expected: int,) -> None:
 
     await RisingEdge(dut.clk)
     await ReadOnly()
@@ -159,7 +159,7 @@ async def output_monitor(dut, ethertype_expected: int, vlan_expected: int, pcp_e
     # meta_d_out[126:124]
     pcp_actual = (metadata >> 124) & 0x7
 
-    if ethertype_expected == 0:
+    if frametype_expected == 0:
         assert vlan_actual == 0, ("FAIL: ethertype=0, expected vlan=0, "f"got vlan=0x{vlan_actual:03x}")
         assert pcp_actual == 0, ("FAIL: ethertype=0, expected pcp=0, "f"got pcp=0x{pcp_actual:x}")
 
@@ -189,17 +189,17 @@ async def test_metadata_assembler(dut) -> None:
 
     for test_number in range(NUM_TESTS):
         if random.randint(0, 1):
-            ethertype_random = 0x0000
+            frametype_random = 0b00
         else:
-            ethertype_random = random.randint(0x0001, 0xFFFF)
+            frametype_random = random.randint(0b01, 0b11)
 
         vlan_random = random.randint(0, 0xFFF)
         pcp_random = random.randint(0, 0x7)
 
-        dut._log.debug("Test %d: ethertype=0x%04x vlan=0x%03x pcp=0x%x",test_number,ethertype_random,vlan_random,pcp_random,)
+        dut._log.debug("Test %d: ethertype=0x%04x vlan=0x%03x pcp=0x%x",test_number,frametype_random,vlan_random,pcp_random,)
 
-        driver_task = cocotb.start_soon(input_driver(dut,ethertype_random,vlan_random,pcp_random,))
-        monitor_task = cocotb.start_soon(output_monitor(dut,ethertype_random,vlan_random,pcp_random,))
+        driver_task = cocotb.start_soon(input_driver(dut,frametype_random,vlan_random,pcp_random,))
+        monitor_task = cocotb.start_soon(output_monitor(dut,frametype_random,vlan_random,pcp_random,))
 
         await driver_task
         await monitor_task
