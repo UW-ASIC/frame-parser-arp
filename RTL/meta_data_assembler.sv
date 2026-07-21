@@ -18,9 +18,9 @@ module meta_data_assembler (
 
 always_comb begin
     meta_d_out[144] = eof;
-    //if ethernet type is eth II ('0) zero out pcp/vlan
-    out_vlan = ethertype == '0 ? '0 : vlan_id; // 
-    out_pcp = ethertype == '0 ? '0 : pcp;
+    //if frame_type  is eth II ('0) zero out pcp/vlan
+    out_vlan = frame_type == '0 ? '0 : vlan_id; // 
+    out_pcp = frame_type == '0 ? '0 : pcp;
     meta_d_out[143:0] = {len,fcs_ok,frame_type,
     out_pcp,out_vlan,ethertype,src_mac,dst_mac};
 end
