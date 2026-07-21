@@ -72,7 +72,7 @@ module frame_parser_frame_control (
     if (!rst_n) begin
       frame_len <= 14'd0;
     end else if (tvalid) begin
-      if ((present_state != IDLE)) begin
+      if ((next_state != IDLE)) begin
         frame_len <= frame_len + bytes_kept;
       end else begin
         frame_len <= 14'd0;
@@ -152,7 +152,7 @@ module frame_parser_frame_control (
   always@(*) begin
 
       // Enable and Frame Validation Handling
-      case (present_state) 
+      case (next_state) 
       
         IDLE        : begin
           en_dst_mac        = 1'b0;
