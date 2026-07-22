@@ -4,7 +4,7 @@ module frame_parser_header_datapath (
     input  wire        clk,
     input  wire        rst_n,
     input wire         ena,
-    //input wire         offset, <-- in block diagram, not used.
+    //input wire         offset, <-- in block diagram, not used in this implementation. Instead of the Frame Control block handling offset, this Header datapath block does it instead (and forwards to metadata assembler)
 
      // inputs from frame input stage
     input wire [63:0] out_tdata,
@@ -16,7 +16,7 @@ module frame_parser_header_datapath (
     input wire        tready,
 
     //inputs from Control FSM stage
-    input wire         is_vlan_frame,   // do we even need this?
+    input wire         is_vlan_frame,   // unused in this implementation
     input wire         en_dst_mac, 
     input wire         en_src_mac_part1, 
     input wire         en_src_mac_part2,
@@ -24,13 +24,13 @@ module frame_parser_header_datapath (
     input wire         en_data,
     
     //output to Control FSM
-    output reg [15:0]    ethertype,
+    output reg [15:0]    ethertype,  // this is tied DIRECTLY from the controlFSM's ethertype - effectively, it gives a "naive" ethertype before we know if its VLAN or not.
 
     //outputs to metadata assembler
     output reg [47:0]    dst_mac,
     output reg [47:0]    src_mac,
     output reg [15:0]    vlan_TCI,
-    output reg [15:0]    final_ethertype, // (CHANGE THIS NAME LATER)
+    output reg [15:0]    final_ethertype, // ENSURE that final_ethertype is tied to ethertype field in METADATA ASSEMBLER
 
     output reg [5:0]     payload_bit_offset,
     output reg           payload_valid,
@@ -68,7 +68,7 @@ module frame_parser_header_datapath (
             payload_valid <= 1'b0;
             payload_bit_offset <=6'b0;
 
-            if (out_tvalid && tready) begin
+            if (out_tvalid) begin // (out_tvalid && tready) is used instead, if tready is not tied to 1. This block and Frame control block both assume tready is always 1 - if this changes, we must rememnber to update both blocks.
                 if (en_dst_mac) begin 
                     dst_mac <= {
                         out_tdata[7:0],
