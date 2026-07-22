@@ -38,6 +38,7 @@ module frame_parser_frame_control (
   localparam BEAT_2       = 3'd2;
   localparam BEAT_3_VLAN  = 3'd3;
   localparam WAIT_EOF     = 3'd4;
+  localparam LAST_FRAME   = 3'd5;
 
   reg [2:0] present_state;
   reg [2:0] next_state;
@@ -45,7 +46,7 @@ module frame_parser_frame_control (
   reg [13:0] frame_len;
   reg [4:0]  bytes_kept;
 
-  wire vlan_detected = (ethertype == 16'h8100) && (present_state == BEAT_2);
+  wire vlan_detected = (ethertype == 16'h8100) && (next_state == BEAT_2);
   reg vlan_remembered;
 
 
@@ -99,7 +100,7 @@ module frame_parser_frame_control (
           next_state = BEAT_2;
         end
         BEAT_2      : begin
-          if (vlan_detected) begin  // checks directly, since is_vlan_frame updates next cycle
+          if (is_vlan_frame) begin  // checks directly, since is_vlan_frame updates next cycle
             next_state = BEAT_3_VLAN;
           end else begin
             next_state = WAIT_EOF;
@@ -110,10 +111,13 @@ module frame_parser_frame_control (
         end
         WAIT_EOF    : begin
           if (tlast) begin
-            next_state = IDLE;
+            next_state = LAST_FRAME;
           end else begin
             next_state = WAIT_EOF;
           end
+        end
+        LAST_FRAME  : begin
+          next_state = IDLE;
         end
         default : next_state = present_state;
 
@@ -138,7 +142,7 @@ module frame_parser_frame_control (
   always@(posedge clk, negedge rst_n) begin
     if (!rst_n) begin
       vlan_remembered <= 1'b0;
-    end else if (present_state == BEAT_2) begin
+    end else if (next_state == BEAT_2) begin
       vlan_remembered <= (vlan_detected) ? 1'b1 : 1'b0;
     end else if (present_state == IDLE) begin
       vlan_remembered <= 1'b0;
@@ -195,6 +199,15 @@ module frame_parser_frame_control (
         end
 
         WAIT_EOF    : begin
+          en_dst_mac        = 1'b0;
+          en_src_mac_part1  = 1'b0;
+          en_src_mac_part2  = 1'b0;
+          en_ethertype      = 1'b0; 
+          en_data           = 1'b1;
+          // is_vlan_frame remains as determined in BEAT_2; 
+        end
+
+        LAST_FRAME    : begin
           en_dst_mac        = 1'b0;
           en_src_mac_part1  = 1'b0;
           en_src_mac_part2  = 1'b0;
