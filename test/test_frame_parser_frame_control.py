@@ -289,3 +289,49 @@ async def test_standard_frame_runt(dut):
     assert dut.drop.value == 1, f"Received: drop == {dut.drop.value}, expected: 1. Frame exceeded 1518 bytes."
     dut.tlast.value = 0
 
+@cocotb.test()
+async def test_vlan_frame_runt(dut):
+    dut._log.info("TEST: test_vlan_frame_length_boundary_check")
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    await reset_dut(dut)
+
+    # idle state
+    dut._log.info("STATE: IDLE")
+    check_enables(dut, "000000")
+
+    # beat 1
+    dut._log.info("STATE: BEAT 1")
+    dut.tvalid.value = 1
+    dut.tkeep.value = 0xFF
+    await RisingEdge(dut.clk)
+    check_enables(dut, "011000")
+
+    # beat 2
+    dut._log.info("STATE: BEAT 2")
+    dut.ethertype.value = 0x8100 
+    await RisingEdge(dut.clk)
+    check_enables(dut, "100100")
+
+    # beat 3
+    dut._log.info("STATE: BEAT 3, VLAN")
+    dut.tvalid.value = 1
+    dut.tkeep.value = 0xFF
+    await RisingEdge(dut.clk)
+    check_enables(dut, "100011")
+
+    # wait eof; loop to reach max length
+    dut._log.info("STATE: WAIT EOF")
+    for i in range(3):
+        dut.tvalid.value = 1
+        dut.tkeep.value = 0xFF
+        await RisingEdge(dut.clk)
+        check_enables(dut, "100001")
+
+    # last frame
+    dut._log.info("STATE: LAST FRAME")
+    dut.tvalid.value = 1    
+    dut.tkeep.value = 0xFF
+    await RisingEdge(dut.clk)
+    check_enables(dut, "100001")
+    assert dut.drop.value == 0, f"Received: drop == {dut.drop.value}, expected: 0. Frame is max length but should not have been dropped."
+

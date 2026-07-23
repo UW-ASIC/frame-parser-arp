@@ -55,6 +55,7 @@ module frame_parser_frame_control (
 
 
   // Frame Length Counting =====================================================
+  // check if you do  * or posedge clk since usually case statements you should do posedge clock but i'm not sure i think u might be right 
   always@(*) begin
     case (tkeep) 
       8'b00000001 : bytes_kept = 4'd1;
@@ -84,10 +85,32 @@ module frame_parser_frame_control (
   end
 
 
+  // VLAN Rememberance =====================================================
+  always@(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      vlan_remembered <= 1'b0;
+    end else if (next_state == BEAT_2) begin
+      vlan_remembered <= (vlan_detected) ? 1'b1 : 1'b0;
+    end else if (present_state == IDLE) begin
+      vlan_remembered <= 1'b0;
+    end else begin
+      vlan_remembered <= vlan_remembered;
+    end
+  end
 
 
 
   // FSM =======================================================================
+
+  // State Assignment
+  always@(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      present_state <= IDLE;
+    end else begin
+      present_state <= next_state;
+    end
+  end
+
   // Next State Logic
   always@(*) begin
     if (tvalid) begin
@@ -124,30 +147,6 @@ module frame_parser_frame_control (
       endcase
     end else begin
       next_state = present_state;
-    end
-  end
-
-
-  // State Assignment
-  always@(posedge clk, negedge rst_n) begin
-    if (!rst_n) begin
-      present_state <= IDLE;
-    end else begin
-      present_state <= next_state;
-    end
-  end
-
-
-  // VLAN Frame Rememberance
-  always@(posedge clk, negedge rst_n) begin
-    if (!rst_n) begin
-      vlan_remembered <= 1'b0;
-    end else if (next_state == BEAT_2) begin
-      vlan_remembered <= (vlan_detected) ? 1'b1 : 1'b0;
-    end else if (present_state == IDLE) begin
-      vlan_remembered <= 1'b0;
-    end else begin
-      vlan_remembered <= vlan_remembered;
     end
   end
 
