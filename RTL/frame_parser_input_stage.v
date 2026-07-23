@@ -12,7 +12,7 @@ module frame_parser_input (
     input wire        tuser,
 
     // outputs to MAC
-    output wire       out_tready,
+    output reg       out_tready,
     
     // inputs from frame control + header datapath
     input wire        frame_ready,
@@ -27,10 +27,10 @@ module frame_parser_input (
 );
 
   reg [63:0] reg_tdata;
-  reg [7:0]  out_tkeep;
-  reg        out_tvalid;
-  reg        out_tlast;
-  reg        out_tuser;
+  reg [7:0]  reg_tkeep;
+  reg        reg_tvalid;
+  reg        reg_tlast;
+  reg        reg_tuser;
 
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -67,6 +67,7 @@ module frame_parser_input (
       reg_tvalid <= 1'b0;
       reg_tlast <= 1'b0;
       reg_tuser <= 1'b0;
+    end
   end
 
 endmodule
