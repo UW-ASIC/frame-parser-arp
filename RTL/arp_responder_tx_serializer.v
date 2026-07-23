@@ -38,22 +38,21 @@ module arp_tx_serializer #(
     always @(posedge clk) begin
         if (!rst_n) begin
             state_q <= S_IDLE;
-            beat_q <= 0;
+            beat_q <= 3'b0;
         end else begin
             case (state_q) 
             S_IDLE: begin
                 if(fire) begin
                     state_q <= S_SEND;
-                    beat_q <= 0;
+                    beat_q <= 3'b0;
                 end
             end
             S_SEND: begin
+                state_q <= S_SEND;
                 if (last_xfer) begin
                     state_q <= S_IDLE;
                 end else if (transfer) begin
                     beat_q <= beat_q + 1;
-                end else begin
-
                 end
             end
             default: begin
