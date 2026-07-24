@@ -47,8 +47,22 @@ module arp_responder_reply_beat_mux (
         - 6B [47:0]: unused padding (=0x0)
     */
 
-    // Reset behavior (executed when reset line is LOW)
-    always @(negedge rst_n) begin
+    // Sequential behavior
+    always @(posedge clk or negedge rst_n) begin
+        // If not being reset
+        if (rst_n) begin
+            // If packet is valid
+            if (valid_packet) begin
+                // Latch SHA and SPA from ARP request
+                reply_img[383:336] <= sha; // Ethernet: Destination MAC Address
+                reply_img[335:288] <= own_mac; // Ethernet: Source MAC Address
+                reply_img[207:160] <= own_mac; // ARP: Sender Hardware Address
+                reply_img[159:128] <= own_ip; // ARP: Sender Protocol Address
+                reply_img[127:80] <= sha; // ARP: Target Hardware Address
+                reply_img[79:48] <= spa; // ARP: Target Protocol Address
+            end
+        // When being reset
+        else
         // Set constant fields in reply_img
         reply_img[287:272] <= 16'h0806; // Ethernet: EtherType
         reply_img[271:256] <= 16'h0001; // ARP: Hardware Type
@@ -65,22 +79,6 @@ module arp_responder_reply_beat_mux (
         reply_img[159:128] <= 32'h0; // ARP: Sender Protocol Address
         reply_img[127:80] <= 48'h0; // ARP: Target Hardware Address
         reply_img[79:48] <= 32'h0; // ARP: Target Protocol Address
-    end
-
-    // Clock behavior (executed for every positive clock edge)
-    always @(posedge clk) begin
-        // When not being reset
-        if (rst_n) begin
-            // If packet is valid
-            if (valid_packet) begin
-                // Latch SHA and SPA from ARP request
-                reply_img[383:336] <= sha; // Ethernet: Destination MAC Address
-                reply_img[335:288] <= own_mac; // Ethernet: Source MAC Address
-                reply_img[207:160] <= own_mac; // ARP: Sender Hardware Address
-                reply_img[159:128] <= own_ip; // ARP: Sender Protocol Address
-                reply_img[127:80] <= sha; // ARP: Target Hardware Address
-                reply_img[79:48] <= spa; // ARP: Target Protocol Address
-            end
         end
     end
 
@@ -88,5 +86,4 @@ module arp_responder_reply_beat_mux (
     // - If the beat ID is valid (i.e. between 0 and 5 inclusive), then multiplex the desired segment
     // - Otherwise, output all zeroes to tell the TX serializer that they screwed up :/
     assign beat_data = (beat_idx <= 3'd5) ? reply_img[(383 - (beat_idx+1)*64 + 1) +: 64] : 64'h0;
-
 endmodule
