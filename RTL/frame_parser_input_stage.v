@@ -47,27 +47,21 @@ module frame_parser_input (
       out_tuser <= 1'b0;
 
       out_tready <= 1'b0;
-    end else if (tvalid) begin
-      reg_tdata <= tdata;
-      reg_tkeep <= tkeep;
-      reg_tvalid <= tvalid;
-      reg_tlast <= tlast;
-      reg_tuser <= tuser;
-
-      out_tdata <= reg_tdata;
-      out_tkeep <= reg_tkeep;
-      out_tvalid <= reg_tvalid;
-      out_tlast <= reg_tlast;
-      out_tuser <= reg_tuser;
-
-      out_tready <= frame_ready && header_ready;
     end else begin
-      reg_tdata <= 64'b0;
-      reg_tkeep <= 8'b0;
-      reg_tvalid <= 1'b0;
-      reg_tlast <= 1'b0;
-      reg_tuser <= 1'b0;
-    end
+      out_tready <= frame_ready && header_ready;
+      if (frame_ready && header_ready) begin
+        reg_tdata <= (tvalid) ? tdata : reg_tdata;
+        reg_tkeep <= (tvalid) ? tkeep : reg_tkeep;
+        reg_tvalid <= tvalid;
+        reg_tlast <= (tvalid) ? tlast : reg_tlast;
+        reg_tuser <= (tvalid) ? tuser : reg_tuser;
+
+        out_tdata <= reg_tdata;
+        out_tkeep <= reg_tkeep;
+        out_tvalid <= reg_tvalid;
+        out_tlast <= reg_tlast;
+        out_tuser <= reg_tuser;
+      end
   end
 
 endmodule
