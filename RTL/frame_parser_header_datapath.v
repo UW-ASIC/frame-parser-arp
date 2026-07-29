@@ -35,11 +35,13 @@ module frame_parser_header_datapath (
     output reg [5:0]     payload_bit_offset,
     output reg           payload_valid,
 
-    output wire          tuser
+    output wire          tuser,
+    output wire          fcs_ok    //only added so I can easily forward this line to metadata assembler, it's just the NOT of tuser, nothing more than that. It's perfectly OK to tie tuser to nothing on the top file, and feed through fcs_ok to metadata.
     
 );
     // fwding t user
     assign tuser = out_tuser;
+    assign fcs_ok = ~out_tuser;
 
     //fwds ethertype (before realizing if it's VLAN or not)
     always @(*) begin
