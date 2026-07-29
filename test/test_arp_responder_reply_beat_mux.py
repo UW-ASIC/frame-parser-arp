@@ -245,10 +245,10 @@ class Design:
         """
         # Pull the reset line low to trigger reset
         self._dut.rst_n.value = 0
-        # Pull the reset line high to end reset
-        self._dut.rst_n.value = 1
         # Wait for 1 clock cycle
         await ClockCycles(self._dut.clk, 1)
+        # Pull the reset line high to end reset
+        self._dut.rst_n.value = 1
 
     async def get_beat(self, beat_number: int) -> LogicArray:
         """
@@ -271,8 +271,11 @@ class Design:
         for i in range(6):
             # Get beat
             cur_beat = await self.get_beat(i)
+            # Get bit numbers
+            bit_num_hi = 383 - i*64
+            bit_num_lo = bit_num_hi - 63 # 64 because it is bit_num_hi - 64 + 1
             # Copy the beat
-            self._logger.info(f"Beat {i}: {cur_beat}")
+            self._logger.info(f"Beat {i}, bits {bit_num_hi:3d} downto {bit_num_lo:3d}: {cur_beat}")
             cur_beats += list(cur_beat)
 
         # Collect the bits together to form a logic array
@@ -302,7 +305,6 @@ class Design:
             self._dut.valid_packet.value = True
             await ClockCycles(self._dut.clk, 1)
             self._dut.valid_packet.value = False
-            await ClockCycles(self._dut.clk, 1)
 
 @cocotb.test
 async def reset_behavior(dut):
@@ -379,6 +381,7 @@ async def first_packet(dut):
     design = Design(dut, logger) 
     await design.reset()
     # Set package values and commit
+    logger.debug("Setting and committing network package values")
     await design.set_attrs(
         own_mac=mac_address(0xDABCAB123456),
         own_ip=protocol_address(0xB0BACAFE),

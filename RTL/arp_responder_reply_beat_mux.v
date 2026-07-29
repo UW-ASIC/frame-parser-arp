@@ -47,38 +47,51 @@ module arp_responder_reply_beat_mux (
         - 6B [47:0]: unused padding (=0x0)
     */
 
+    // Constants defined within the Ethernet II and ARP standards
+    localparam logic[15:0] Ethertype = 16'h0806;
+    localparam logic[15:0] HardwareType = 16'h0001;
+    localparam logic[15:0] ProtocolType = 16'h0800;
+    localparam logic[7:0] HardwareLength = 8'h06;
+    localparam logic[7:0] ProtocolLength = 8'h04;
+    localparam logic[15:0] Operation = 16'h0002;
+
     // Sequential behavior
     always @(posedge clk or negedge rst_n) begin
-        // If not being reset
-        if (rst_n) begin
-            // If packet is valid
-            if (valid_packet) begin
-                // Latch SHA and SPA from ARP request
-                reply_img[383:336] <= sha; // Ethernet: Destination MAC Address
-                reply_img[335:288] <= own_mac; // Ethernet: Source MAC Address
-                reply_img[207:160] <= own_mac; // ARP: Sender Hardware Address
-                reply_img[159:128] <= own_ip; // ARP: Sender Protocol Address
-                reply_img[127:80] <= sha; // ARP: Target Hardware Address
-                reply_img[79:48] <= spa; // ARP: Target Protocol Address
-            end
         // When being reset
-        else
-        // Set constant fields in reply_img
-        reply_img[287:272] <= 16'h0806; // Ethernet: EtherType
-        reply_img[271:256] <= 16'h0001; // ARP: Hardware Type
-        reply_img[255:240] <= 16'h0800; // ARP: Protocol Type
-        reply_img[239:232] <= 8'h06; // ARP: Hardware Length
-        reply_img[231:224] <= 8'h04; // ARP: Protocol Length
-        reply_img[223:208] <= 16'h0002; // ARP: Operation
-        reply_img[47:0] <= 48'h0; // Unused padding, set to 0
-
-        // Set variable fields to 0 for now
-        reply_img[383:336] <= 48'h0; // Ethernet: Destination MAC Address
-        reply_img[335:288] <= 48'h0; // Ethernet: Source MAC Address
-        reply_img[207:160] <= 48'h0; // ARP: Sender Hardware Address
-        reply_img[159:128] <= 32'h0; // ARP: Sender Protocol Address
-        reply_img[127:80] <= 48'h0; // ARP: Target Hardware Address
-        reply_img[79:48] <= 32'h0; // ARP: Target Protocol Address
+        if (!rst_n) begin
+            // Initialize reply image
+            reply_img <= {
+                48'h0,          // Ethernet: Destination MAC Address
+                48'h0,          // Ethernet: Source MAC Address
+                Ethertype,      // Ethernet: EtherType
+                HardwareType,   // ARP: Hardware Type
+                ProtocolType,   // ARP: Protocol Type
+                HardwareLength, // ARP: Hardware Length
+                ProtocolLength, // ARP: Protocol Length
+                Operation,      // ARP: Operation
+                48'h0,          // ARP: Sender Hardware Address
+                32'h0,          // ARP: Sender Protocol Address
+                48'h0,          // ARP: Target Hardware Address
+                32'h0,          // ARP: Target Protocol Address
+                48'h0           // Unused padding
+            };
+        end else if (valid_packet) begin
+            // Latch SHA and SPA from ARP request
+            reply_img <= {
+                sha,            // Ethernet: Destination MAC Address
+                own_mac,        // Ethernet: Source MAC Address
+                Ethertype,      // Ethernet: EtherType
+                HardwareType,   // ARP: Hardware Type
+                ProtocolType,   // ARP: Protocol Type
+                HardwareLength, // ARP: Hardware Length
+                ProtocolLength, // ARP: Protocol Length
+                Operation,      // ARP: Operation
+                own_mac,        // ARP: Sender Hardware Address
+                own_ip,         // ARP: Sender Protocol Address
+                sha,            // ARP: Target Hardware Address
+                spa,            // ARP: Target Protocol Address
+                48'h0           // Unused padding
+            };
         end
     end
 
