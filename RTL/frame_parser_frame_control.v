@@ -25,6 +25,7 @@ module frame_parser_frame_control (
     output reg         en_ethertype, 
     output reg         en_data,
 
+    output reg  [13:0] final_frame_len,
     output reg         drop
 );
 
@@ -229,8 +230,11 @@ module frame_parser_frame_control (
     if (tlast && tvalid) begin
       // Drop is high if: FCS failed || frame is too long || frame is a runt (less than 64 bytes)
       drop = ((tuser_0 == 1'b1) || ((frame_len + bytes_kept) > (is_vlan_frame ? 14'd1522 : 14'd1518)) || ((frame_len + bytes_kept) < 14'd64));
+      // output the frame length on the final beat
+      final_frame_len <= frame_len;
     end else begin
       drop = 1'b0;
+      final_frame_len <= 14'b0;
     end
 
     // VLAN_Frame En Handling
