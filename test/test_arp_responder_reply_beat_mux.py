@@ -58,6 +58,24 @@ class PackageAttributes:
         """
         return f"Expected {property} to be {expected}, but got {actual}"
 
+    @staticmethod
+    def _inspect(property: str, expected: Optional[LogicArray], actual: Optional[LogicArray], logger: logging.Logger):
+        """
+        Helper function to inspect between two attributes
+        """
+        # If there is a mismatch
+        if expected is not None and expected != actual:
+            # Print the mismatch
+            logger.warning(f"Mismatch detected for {property}:")
+            logger.warning(f"Expected:\t{expected}")
+            logger.warning(f"Actual:\t\t{actual}")
+            # Print difference if `actual` isn't `None`
+            if actual is not None:
+                logger.warning(f"Difference:\t{expected ^ actual}")
+
+            assert expected == actual, PackageAttributes._get_assert_msg(property, expected, actual)
+
+
     def __init__(self, dest_mac: Optional[LogicArray], source_mac: Optional[LogicArray], sha: Optional[LogicArray], spa: Optional[LogicArray], tha: Optional[LogicArray], tpa: Optional[LogicArray]) -> None:
         """
         Create a new package attributes object. You may pass `None` to any of the parameters
@@ -70,7 +88,7 @@ class PackageAttributes:
         self.tha = tha
         self.tpa = tpa
 
-    def assert_attrs(self, other: object):
+    def assert_attrs(self, other: object,logger: logging.Logger):
         """
         Assert the attributes of this class onto another
         """
@@ -79,18 +97,12 @@ class PackageAttributes:
             raise TypeError(f"Attempted to compare a PackageAttributes with {type(other)}")
 
         # Assertions
-        if self.dest_mac is not None:
-            assert self.dest_mac == other.dest_mac, self._get_assert_msg("destination MAC address", self.dest_mac, other.dest_mac)
-        if self.source_mac is not None:
-            assert self.source_mac == other.source_mac, self._get_assert_msg("source MAC address", self.source_mac, other.source_mac)
-        if self.sha is not None:
-            assert self.sha == other.sha, self._get_assert_msg("Sender Hardware Address (SHA)", self.sha, other.sha)
-        if self.spa is not None:
-            assert self.spa == other.spa, self._get_assert_msg("Sender Protocol Address (SPA)", self.spa, other.spa)
-        if self.tha is not None:
-            assert self.tha == other.tha, self._get_assert_msg("Target Hardware Address (THA)", self.tha, other.tha)
-        if self.tpa is not None:
-            assert self.tpa == other.tpa, self._get_assert_msg("Target Protocol Address (TPA)", self.tpa, other.tpa)
+        self._inspect("destination MAC address", self.dest_mac, other.dest_mac, logger)
+        self._inspect("source MAC address", self.source_mac, other.source_mac, logger)
+        self._inspect("Sender Hardware Address (SHA)", self.sha, other.sha, logger)
+        self._inspect("Sender Protocol Address (SPA)", self.spa, other.spa, logger)
+        self._inspect("Target Hardware Address (THA)", self.tha, other.tha, logger)
+        self._inspect("Target Protocol Address (TPA)", self.tpa, other.tpa, logger)
 
 class Image:
     """
@@ -126,10 +138,12 @@ class Image:
     # Unused padding bits, should be zeroes (6B)
     padding: LogicArray
 
-    def __init__(self, bits: LogicArray) -> None:
+    def __init__(self, bits: LogicArray, logger: logging.Logger) -> None:
         """
         Deserialize an array of bits into a reply image
         """
+        # Assign logger
+        self._logger = logger
         # Keep track of the starting point
         start_point = 384
         # From Ethernet II:
@@ -202,7 +216,7 @@ class Image:
         """
         Check that the non-constant fields in the image match `criteria`. 
         """
-        criteria.assert_attrs(self.package_attr)
+        criteria.assert_attrs(self.package_attr, self._logger)
 
 class Design:
     """
@@ -265,7 +279,7 @@ class Design:
         joined = LogicArray(cur_beats)
 
         # Return Image
-        return Image(joined)
+        return Image(joined, self._logger)
 
     async def set_attrs(self, own_mac: Optional[LogicArray], own_ip: Optional[LogicArray], sha: Optional[LogicArray], spa: Optional[LogicArray], commit: bool = True) -> None:
         """
@@ -288,6 +302,7 @@ class Design:
             self._dut.valid_packet.value = True
             await ClockCycles(self._dut.clk, 1)
             self._dut.valid_packet.value = False
+            await ClockCycles(self._dut.clk, 1)
 
 @cocotb.test
 async def reset_behavior(dut):
@@ -323,7 +338,7 @@ async def invalid_packet_after_reset(dut):
     """
     # Get logger
     logger = logging.getLogger("invalid_packet_after_reset")
-    logger.setLevel(logging.DEBUG)
+    # logger.setLevel(logging.DEBUG)
     # Initialize design
     logger.debug("Initializing design")
     design = Design(dut, logger) 
@@ -349,4 +364,38 @@ async def invalid_packet_after_reset(dut):
         spa=protocol_address(0),
         tha=hardware_address(0),
         tpa=protocol_address(0)
+    ))
+
+@cocotb.test
+async def first_packet(dut):
+    """
+    Tests that immediately after resetting, the module can latch its first packet
+    """
+    # Get logger
+    logger = logging.getLogger("first_packet")
+    logger.setLevel(logging.DEBUG)
+    # Initialize design
+    logger.debug("Initializing design")
+    design = Design(dut, logger) 
+    await design.reset()
+    # Set package values and commit
+    await design.set_attrs(
+        own_mac=mac_address(0xDABCAB123456),
+        own_ip=protocol_address(0xB0BACAFE),
+        sha=hardware_address(0x9876543210CC),
+        spa=protocol_address(0xDEADBEEF)
+    )
+    # Request and deserialize beats
+    logger.debug("Requesting beats")
+    image = await design.deserialize_beats()
+    # Assertions
+    logger.debug("Asserting")
+    image.check_integrity() 
+    image.check_attrs(PackageAttributes(
+        dest_mac=hardware_address(0x9876543210CC),
+        source_mac=mac_address(0xDABCAB123456),
+        sha=mac_address(0xDABCAB123456),
+        spa=protocol_address(0xB0BACAFE),
+        tha=hardware_address(0x9876543210CC),
+        tpa=protocol_address(0xDEADBEEF)
     ))
