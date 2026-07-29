@@ -73,7 +73,7 @@ class PackageAttributes:
             if actual is not None:
                 logger.warning(f"Difference:\t{expected ^ actual}")
 
-            assert expected == actual, PackageAttributes._get_assert_msg(property, expected, actual)
+            raise AssertionError(PackageAttributes._get_assert_msg(property, expected, actual))
 
 
     def __init__(self, dest_mac: Optional[LogicArray], source_mac: Optional[LogicArray], sha: Optional[LogicArray], spa: Optional[LogicArray], tha: Optional[LogicArray], tpa: Optional[LogicArray]) -> None:
