@@ -22,6 +22,11 @@ jobs:
     needs: gds
     runs-on: ubuntu-24.04
     steps:
+      - name: checkout repo
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Run Tiny Tapeout Precheck
         uses: TinyTapeout/tt-gds-action/precheck@ttsky26c
 

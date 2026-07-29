@@ -8,7 +8,7 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ClockCycles, ReadOnly, Timer
+from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, ReadOnly, Timer
 import random
 
 BUS_BYTES = 8  # 64-bit bus
@@ -87,9 +87,10 @@ async def drive_beats(dut, beats, tuser_on_last=1):
  
         # Wait until DUT accepts this beat (tvalid & tready sampled together)
         while True:
-            await RisingEdge(dut.clk)
             await ReadOnly()
-            if dut.s_axis_tvalid.value == 1 and dut.s_axis_tready.value == 1:
+            accepted = (dut.s_axis_tvalid.value == 1 and dut.s_axis_tready.value == 1)
+            await RisingEdge(dut.clk)
+            if accepted:
                 break
  
     dut.s_axis_tvalid.value = 0
@@ -127,7 +128,7 @@ async def send_arp_packet(dut, payload: bytes, tuser=1, idle_prob=0.0,
         dut.s_axis_tvalid.value = 1
  
         await RisingEdge(dut.clk)
-        await ReadOnly()
+        await FallingEdge(dut.clk)
         # s_axis_tready is tied high in this design, so every beat with
         # tvalid=1 is accepted on this edge -- no acceptance check needed.
  
@@ -139,7 +140,7 @@ async def send_arp_packet(dut, payload: bytes, tuser=1, idle_prob=0.0,
 async def test_basic_capture(dut):
     """Send one well-formed ARP request; check all captured fields at tlast."""
  
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     # --- Test vector ---
@@ -169,10 +170,10 @@ async def test_basic_capture(dut):
         dut.s_axis_tvalid.value = 1
  
         while True:
-            await RisingEdge(dut.clk)
             await ReadOnly()
             accepted = (dut.s_axis_tvalid.value == 1
                         and dut.s_axis_tready.value == 1)
+            await RisingEdge(dut.clk)
             if accepted:
                 break
  
@@ -183,7 +184,7 @@ async def test_basic_capture(dut):
     # so they update on the same edge that accepted the tlast beat and are
     # already valid by the time we reach ReadOnly() here -- no extra
     # RisingEdge needed.
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     assert int(dut.capture_done.value) == 1, \
         "capture_done did not assert on the cycle after tlast was accepted"
@@ -219,7 +220,7 @@ async def test_spa_beat_boundary_straddle(dut):
     value mid-stream, not just the final result -- this catches an
     off-by-one byte split that happens to cancel out by the final beat.
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     # Distinct, non-repeating bytes so any shift/off-by-one is obviously wrong
@@ -239,13 +240,13 @@ async def test_spa_beat_boundary_straddle(dut):
     dut.s_axis_tlast.value = 0
     dut.s_axis_tvalid.value = 1
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     # beat1 (SHA + SPA upper half): state BEAT0 -> BEAT1
     dut.s_axis_tdata.value = beats[1]["tdata"]
     dut.s_axis_tkeep.value = beats[1]["tkeep"]
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     # ext_sha and ext_spa[31:16] should now be latched; ext_spa[15:0] is
     # not valid yet (BEAT1 hasn't been processed).
@@ -261,7 +262,7 @@ async def test_spa_beat_boundary_straddle(dut):
     dut.s_axis_tdata.value = beats[2]["tdata"]
     dut.s_axis_tkeep.value = beats[2]["tkeep"]
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     got_spa_full = int(dut.ext_spa.value)
     assert got_spa_full == spa, \
@@ -273,7 +274,7 @@ async def test_spa_beat_boundary_straddle(dut):
     dut.s_axis_tlast.value = 1
     dut.s_axis_tuser.value = 1
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     dut.s_axis_tvalid.value = 0
     dut.s_axis_tlast.value = 0
@@ -294,7 +295,7 @@ async def test_padding_drain(dut):
     should reflect only the real ARP bytes, and tready must stay asserted
     throughout the padding beats (WAIT_TLAST just absorbs them).
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     sha    = 0x0A0B0C0D0E0F
@@ -316,7 +317,7 @@ async def test_padding_drain(dut):
         dut.s_axis_tuser.value = 1 if beat["tlast"] else 0
         dut.s_axis_tvalid.value = 1
         await RisingEdge(dut.clk)
-        await ReadOnly()
+        await FallingEdge(dut.clk)
         if int(dut.s_axis_tready.value) != 1:
             tready_low_seen = True
  
@@ -340,7 +341,7 @@ async def test_tready_always_high(dut):
     tied high regardless of tvalid, tdata, or internal FSM state. Checked
     every clock cycle, not just once.
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     random.seed(1)
@@ -350,7 +351,7 @@ async def test_tready_always_high(dut):
         dut.s_axis_tlast.value = random.choice([0, 0, 0, 1])
         dut.s_axis_tuser.value = random.getrandbits(1)
         await RisingEdge(dut.clk)
-        await ReadOnly()
+        await FallingEdge(dut.clk)
         assert int(dut.s_axis_tready.value) == 1, \
             f"tready deasserted at cycle {cyc} -- Request Capture must always be ready"
  
@@ -365,7 +366,7 @@ async def test_early_tlast_passthrough(dut):
     must still pulse capture_done with whatever partial fields it has (no
     hang, no error flagging), and be ready for the next packet right away.
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     # tlast asserted on the very first beat -- only opcode has been
@@ -377,7 +378,7 @@ async def test_early_tlast_passthrough(dut):
     dut.s_axis_tuser.value = 1
     dut.s_axis_tvalid.value = 1
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
  
     dut.s_axis_tvalid.value = 0
     dut.s_axis_tlast.value = 0
@@ -392,7 +393,7 @@ async def test_early_tlast_passthrough(dut):
     # Confirm the FSM returned to IDLE and is immediately ready for a
     # fresh packet (no lockup after a short frame).
     await RisingEdge(dut.clk)
-    await ReadOnly()
+    await FallingEdge(dut.clk)
     assert int(dut.s_axis_tready.value) == 1
  
     dut._log.info("Early tlast passthrough test passed.")
@@ -405,7 +406,7 @@ async def test_no_tlast_no_false_done(dut):
     keeps absorbing beats (via WAIT_TLAST once past BEAT2) without ever
     signaling a spurious done, and without hanging tready.
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     for i in range(20):
@@ -414,7 +415,7 @@ async def test_no_tlast_no_false_done(dut):
         dut.s_axis_tlast.value = 0
         dut.s_axis_tvalid.value = 1
         await RisingEdge(dut.clk)
-        await ReadOnly()
+        await FallingEdge(dut.clk)
         assert int(dut.capture_done.value) == 0, \
             f"capture_done asserted with no tlast (cycle {i})"
         assert int(dut.s_axis_tready.value) == 1
@@ -430,7 +431,7 @@ async def test_back_to_back_packets_no_gap(dut):
     beat -- no idle bubble. Confirm B's fields cleanly overwrite A's with
     no leftover state from A (e.g. OR'd/mixed bits).
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     # Packet A: all-1s fields
@@ -457,7 +458,7 @@ async def test_back_to_back_packets_no_gap(dut):
         dut.s_axis_tuser.value = 1 if beat["tlast"] else 0
         dut.s_axis_tvalid.value = 1
         await RisingEdge(dut.clk)
-        await ReadOnly()
+        await FallingEdge(dut.clk)
  
         if i == len(beats_a) - 1:
             # Just processed A's tlast beat -- confirm A's fields landed cleanly
@@ -492,7 +493,7 @@ async def test_randomized_stress(dut):
     mapping (not just "the ARP spec"), since Capture doesn't validate
     semantics -- it only latches by beat position.
     """
-    cocotb.start_soon(Clock(dut.clk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
  
     random.seed(42)
