@@ -11,6 +11,86 @@ from cocotb.types import Logic, LogicArray
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 import logging
+from typing import Optional
+
+def mac_address(value: int) -> LogicArray:
+    """
+    Make a LogicArray representing a 6-byte MAC address.
+    """
+    return LogicArray(value, 6*8)
+
+def hardware_address(value: int) -> LogicArray:
+    """
+    Make a LogicArray representing a 6-byte SHA or THA.
+    """
+    return LogicArray(value, 6*8)
+
+def protocol_address(value: int) -> LogicArray:
+    """
+    Make a LogicArray representing a 4-byte SPA or TPA.
+    """
+    return LogicArray(value, 4*8)
+
+class PackageAttributes:
+    """
+    Package attributes, containing own MAC, own IP, SHA, SPA, THA, and TPA.
+    """
+    # From Ethernet II:
+    # Destination MAC address (6B)
+    dest_mac: Optional[LogicArray]
+    # Source MAC address (6B)
+    source_mac: Optional[LogicArray]
+
+    # From ARP:
+    # Sender hardware address (6B)
+    sha: Optional[LogicArray]
+    # Sender protocol address (4B)
+    spa: Optional[LogicArray]
+    # Target hardware address (6B)
+    tha: Optional[LogicArray]
+    # Target protocol address (4B)
+    tpa: Optional[LogicArray]
+
+    @staticmethod
+    def _get_assert_msg(property: str, expected: LogicArray, actual: Optional[LogicArray]) -> str:
+        """
+        Helper function to get an assertion message
+        """
+        return f"Expected {property} to be {expected}, but got {actual}"
+
+    def __init__(self, dest_mac: Optional[LogicArray], source_mac: Optional[LogicArray], sha: Optional[LogicArray], spa: Optional[LogicArray], tha: Optional[LogicArray], tpa: Optional[LogicArray]) -> None:
+        """
+        Create a new package attributes object. You may pass `None` to any of the parameters
+        to indicate that it can take on any value.
+        """
+        self.dest_mac = dest_mac
+        self.source_mac = source_mac
+        self.sha = sha
+        self.spa = spa
+        self.tha = tha
+        self.tpa = tpa
+
+    def assert_attrs(self, other: object):
+        """
+        Assert the attributes of this class onto another
+        """
+        # Check type of other
+        if type(other) != PackageAttributes:
+            raise TypeError(f"Attempted to compare a PackageAttributes with {type(other)}")
+
+        # Assertions
+        if self.dest_mac is not None:
+            assert self.dest_mac == other.dest_mac, self._get_assert_msg("destination MAC address", self.dest_mac, other.dest_mac)
+        if self.source_mac is not None:
+            assert self.source_mac == other.source_mac, self._get_assert_msg("source MAC address", self.source_mac, other.source_mac)
+        if self.sha is not None:
+            assert self.sha == other.sha, self._get_assert_msg("Sender Hardware Address (SHA)", self.sha, other.sha)
+        if self.spa is not None:
+            assert self.spa == other.spa, self._get_assert_msg("Sender Protocol Address (SPA)", self.spa, other.spa)
+        if self.tha is not None:
+            assert self.tha == other.tha, self._get_assert_msg("Target Hardware Address (THA)", self.tha, other.tha)
+        if self.tpa is not None:
+            assert self.tpa == other.tpa, self._get_assert_msg("Target Protocol Address (TPA)", self.tpa, other.tpa)
 
 class Image:
     """
@@ -19,10 +99,8 @@ class Image:
     # Field names
 
     # From Ethernet II:
-    # Destination MAC address (6B)
-    dest_mac: LogicArray
-    # Source MAC address (6B)
-    source_mac: LogicArray
+    # Destination MAC address (6B, packaged)
+    # Source MAC address (6B, packaged)
     # EtherType (2B)
     ethertype: LogicArray
 
@@ -37,14 +115,13 @@ class Image:
     protocol_length: int
     # Operation (2B)
     operation: LogicArray
-    # Sender hardware address (6B)
-    sha: LogicArray
-    # Sender protocol address (4B)
-    spa: LogicArray
-    # Target hardware address (6B)
-    tha: LogicArray
-    # Target protocol address (4B)
-    tpa: LogicArray
+    # Sender hardware address (6B, packaged)
+    # Sender protocol address (4B, packaged)
+    # Target hardware address (6B, packaged)
+    # Target protocol address (4B, packaged)
+
+    # Package attributes
+    package_attr: PackageAttributes
 
     # Unused padding bits, should be zeroes (6B)
     padding: LogicArray
@@ -58,10 +135,10 @@ class Image:
         # From Ethernet II:
         # Destination MAC address (6B)
         start_point -= 6*8
-        self.dest_mac = bits[start_point+6*8-1:start_point]
+        dest_mac = bits[start_point+6*8-1:start_point]
         # Source MAC address (6B)
         start_point -= 6*8
-        self.source_mac = bits[start_point+6*8-1:start_point]
+        source_mac = bits[start_point+6*8-1:start_point]
         # EtherType (2B)
         start_point -= 2*8
         self.ethertype = bits[start_point+2*8-1:start_point]
@@ -84,19 +161,29 @@ class Image:
         self.operation = bits[start_point+2*8-1:start_point]
         # Sender hardware address (6B)
         start_point -= 6*8
-        self.sha = bits[start_point+6*8-1:start_point]
+        sha = bits[start_point+6*8-1:start_point]
         # Sender protocol address (4B)
         start_point -= 4*8
-        self.spa = bits[start_point+4*8-1:start_point]
+        spa = bits[start_point+4*8-1:start_point]
         # Target hardware address (6B)
         start_point -= 6*8
-        self.tha = bits[start_point+6*8-1:start_point]
+        tha = bits[start_point+6*8-1:start_point]
         # Target protocol address (4B)
         start_point -= 4*8
-        self.tpa = bits[start_point+4*8-1:start_point]
+        tpa = bits[start_point+4*8-1:start_point]
         # Padding (6B)
         start_point -= 6*8
         self.padding = bits[start_point+6*8-1:start_point]
+
+        # Set package attributes
+        self.package_attr = PackageAttributes(
+            dest_mac=dest_mac,
+            source_mac=source_mac,
+            sha=sha,
+            spa=spa,
+            tha=tha,
+            tpa=tpa
+        )
 
     def check_integrity(self):
         """
@@ -110,6 +197,12 @@ class Image:
         assert self.protocol_length == 0x04, f"The protocol length for IPv4 is 1, but found {self.protocol_length}"
         assert self.operation == 0x0002, f"This is the reply beat MUX, so the operation must be 2 for reply, but found {self.operation}"
         assert self.padding == 0, f"Padding must always be 0 so that the TX serializer doesn't transmit garbage, but found {self.padding}"
+
+    def check_attrs(self, criteria: PackageAttributes):
+        """
+        Check that the non-constant fields in the image match `criteria`. 
+        """
+        criteria.assert_attrs(self.package_attr)
 
 class Design:
     """
@@ -138,10 +231,21 @@ class Design:
         """
         # Pull the reset line low to trigger reset
         self._dut.rst_n.value = 0
-        # Wait for 1 clock cycle
-        await ClockCycles(self._dut.clk, 1)
         # Pull the reset line high to end reset
         self._dut.rst_n.value = 1
+        # Wait for 1 clock cycle
+        await ClockCycles(self._dut.clk, 1)
+
+    async def get_beat(self, beat_number: int) -> LogicArray:
+        """
+        Manually get a beat by beat number
+        """
+        # Set beat number in design
+        self._dut.beat_idx.value = beat_number
+        # Wait for 1 clock cycle
+        await ClockCycles(self._dut.clk, 1)
+        # Return the beat
+        return self._dut.beat_data.value
 
     async def deserialize_beats(self) -> Image:
         """
@@ -151,19 +255,39 @@ class Design:
         cur_beats: list[Logic] = []
         # For each of the 6 beats
         for i in range(6):
-            # Set beat number in design
-            self._dut.beat_idx.value = i
-            # Wait for 1 clock cycle
-            await ClockCycles(self._dut.clk, 1)
+            # Get beat
+            cur_beat = await self.get_beat(i)
             # Copy the beat
-            self._logger.info(f"Beat {i}: {self._dut.beat_data.value}")
-            cur_beats += list(self._dut.beat_data.value)
+            self._logger.info(f"Beat {i}: {cur_beat}")
+            cur_beats += list(cur_beat)
 
         # Collect the bits together to form a logic array
         joined = LogicArray(cur_beats)
 
         # Return Image
         return Image(joined)
+
+    async def set_attrs(self, own_mac: Optional[LogicArray], own_ip: Optional[LogicArray], sha: Optional[LogicArray], spa: Optional[LogicArray], commit: bool = True) -> None:
+        """
+        Set some package attributes into the design.
+        If `commit` is true, `valid_packet` will be asserted to latch the packet.
+        Otherwise, `valid_packet` will not be asserted, and the packet will not be latched.
+        """
+        # Set attribute values
+        if own_mac is not None:
+            self._dut.own_mac.value = own_mac
+        if own_ip is not None:
+            self._dut.own_ip.value = own_ip
+        if sha is not None:
+            self._dut.sha.value = sha
+        if spa is not None:
+            self._dut.spa.value = spa
+
+        # Commit changes if requested
+        if commit:
+            self._dut.valid_packet.value = True
+            await ClockCycles(self._dut.clk, 1)
+            self._dut.valid_packet.value = False
 
 @cocotb.test
 async def reset_behavior(dut):
@@ -172,7 +296,7 @@ async def reset_behavior(dut):
     """
     # Get logger
     logger = logging.getLogger("reset_behavior")
-    logger.setLevel(logging.DEBUG)
+    # logger.setLevel(logging.DEBUG)
     # Initialize design
     logger.debug("Initializing design")
     design = Design(dut, logger) 
@@ -183,9 +307,46 @@ async def reset_behavior(dut):
     # Assertions
     logger.debug("Asserting")
     image.check_integrity() 
-    assert image.dest_mac == 0
-    assert image.source_mac == 0
-    assert image.sha == 0
-    assert image.spa == 0
-    assert image.tha == 0
-    assert image.tpa == 0
+    image.check_attrs(PackageAttributes(
+        dest_mac=mac_address(0),
+        source_mac=mac_address(0),
+        sha=hardware_address(0),
+        spa=protocol_address(0),
+        tha=hardware_address(0),
+        tpa=protocol_address(0)
+    ))
+
+@cocotb.test
+async def invalid_packet_after_reset(dut):
+    """
+    Tests that immediately after resetting, the module does not latch attributes from invalid packets
+    """
+    # Get logger
+    logger = logging.getLogger("invalid_packet_after_reset")
+    logger.setLevel(logging.DEBUG)
+    # Initialize design
+    logger.debug("Initializing design")
+    design = Design(dut, logger) 
+    await design.reset()
+    # Set package values without committing
+    await design.set_attrs(
+        own_mac=mac_address(0xFFFFFFFFFFFF),
+        own_ip=protocol_address(0xFFFFFFFF),
+        sha=hardware_address(0xFFFFFFFFFFFF),
+        spa=protocol_address(0xFFFFFFFF),
+        commit=False
+    )
+    # Request and deserialize beats
+    logger.debug("Requesting beats")
+    image = await design.deserialize_beats()
+    # Assertions
+    logger.debug("Asserting")
+    image.check_integrity() 
+    image.check_attrs(PackageAttributes(
+        dest_mac=mac_address(0),
+        source_mac=mac_address(0),
+        sha=hardware_address(0),
+        spa=protocol_address(0),
+        tha=hardware_address(0),
+        tpa=protocol_address(0)
+    ))

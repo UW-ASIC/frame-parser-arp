@@ -85,5 +85,5 @@ module arp_responder_reply_beat_mux (
     // Assign beat data:
     // - If the beat ID is valid (i.e. between 0 and 5 inclusive), then multiplex the desired segment
     // - Otherwise, output all zeroes to tell the TX serializer that they screwed up :/
-    assign beat_data = (beat_idx <= 3'd5) ? reply_img[(383 - (beat_idx+1)*64 + 1) +: 64] : 64'h0;
+    assign beat_data = (beat_idx <= 3'd5) ? reply_img[(383 - beat_idx*64) -: 64] : 64'h0;
 endmodule
