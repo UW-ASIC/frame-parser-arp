@@ -375,7 +375,7 @@ async def first_packet(dut):
     """
     # Get logger
     logger = logging.getLogger("first_packet")
-    logger.setLevel(logging.DEBUG)
+    # logger.setLevel(logging.DEBUG)
     # Initialize design
     logger.debug("Initializing design")
     design = Design(dut, logger) 
@@ -402,3 +402,27 @@ async def first_packet(dut):
         tha=hardware_address(0x9876543210CC),
         tpa=protocol_address(0xDEADBEEF)
     ))
+
+@cocotb.test
+async def invalid_beats(dut):
+    """
+    Tests that invalid beats yield 0s
+    """
+    # Get logger
+    logger = logging.getLogger("invalid_beats")
+    # logger.setLevel(logging.DEBUG)
+    # Initialize design
+    logger.debug("Initializing design")
+    design = Design(dut, logger) 
+    await design.reset()
+    # Set package values and commit (should have no effect)
+    logger.debug("Setting and committing network package values")
+    await design.set_attrs(
+        own_mac=mac_address(0xDABCAB123456),
+        own_ip=protocol_address(0xB0BACAFE),
+        sha=hardware_address(0x9876543210CC),
+        spa=protocol_address(0xDEADBEEF)
+    )
+    # Manually get beats and verify that they are 0s
+    for i in range(6, 8):
+        assert await design.get_beat(i) == 0, f"Invalid beat number {i} yielded a non-zero value. When transmitted by the TX serializer downstream, this could cause issues."
