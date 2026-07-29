@@ -14,6 +14,8 @@ PROJECT_SOURCES = project.v
 # Compiles everything in ../RTL and runs test_<module_name>.py against the
 # Verilog module <module_name>. If the module is named differently from its
 # file, add TOPLEVEL=<verilog_module_name> to the command line.
+# When UNIT is set, enable cocotb's built-in Icarus wave dump so the waveform
+# is written to sim_build/<UNIT>/<UNIT>.fst.
 UNIT ?=
 
 ifneq ($(GATES),yes)
@@ -32,6 +34,7 @@ else
 
 # RTL simulation of a single module (no tb.v wrapper, drive ports from Python):
 SIM_BUILD				= sim_build/$(UNIT)
+WAVES = 1
 VERILOG_SOURCES += $(wildcard $(RTL_DIR)/*.v)
 TOPLEVEL = $(UNIT)
 COCOTB_TEST_MODULES = test_$(UNIT)
