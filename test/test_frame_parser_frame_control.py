@@ -286,7 +286,7 @@ async def test_standard_frame_runt(dut):
     dut.tlast.value = 1
     await RisingEdge(dut.clk)
     check_enables(dut, "000001")
-    assert dut.drop.value == 1, f"Received: drop == {dut.drop.value}, expected: 1. Frame exceeded 1518 bytes."
+    assert dut.drop.value == 1, f"Received: drop == {dut.drop.value}, expected: 1. Frame less than 64 bytes."
     dut.tlast.value = 0
 
 @cocotb.test()
@@ -333,5 +333,5 @@ async def test_vlan_frame_runt(dut):
     dut.tkeep.value = 0xFF
     await RisingEdge(dut.clk)
     check_enables(dut, "100001")
-    assert dut.drop.value == 0, f"Received: drop == {dut.drop.value}, expected: 0. Frame is max length but should not have been dropped."
+    assert dut.drop.value == 0, f"Received: drop == {dut.drop.value}, expected: 1. Frame is less than 64 bytes."
 

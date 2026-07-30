@@ -91,7 +91,7 @@ module frame_parser_frame_control (
     if (!rst_n) begin
       vlan_remembered <= 1'b0;
     end else if (next_state == BEAT_2) begin
-      vlan_remembered <= (vlan_detected) ? 1'b1 : 1'b0;
+      vlan_remembered <= vlan_detected;
     end else if (present_state == IDLE) begin
       vlan_remembered <= 1'b0;
     end else begin
