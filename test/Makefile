@@ -25,8 +25,8 @@ SIM_BUILD				= sim_build/rtl
 VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
 VERILOG_SOURCES += $(wildcard $(RTL_DIR)/*.v)
 VERILOG_SOURCES += $(PWD)/tb.v
-TOPLEVEL = tb
-COCOTB_TEST_MODULES = test
+TOPLEVEL = frame_parser_frame_control
+COCOTB_TEST_MODULES = test_frame_parser_frame_control
 
 else
 
