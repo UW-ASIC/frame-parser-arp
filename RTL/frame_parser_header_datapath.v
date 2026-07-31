@@ -29,7 +29,9 @@ module frame_parser_header_datapath (
     //outputs to metadata assembler
     output reg [47:0]    dst_mac,
     output reg [47:0]    src_mac,
-    output reg [15:0]    vlan_TCI,
+    output wire [11:0]   vlan_id,
+    output wire [2:0]    vlan_pcp,
+    output wire          vlan_dei,
     output reg [15:0]    final_ethertype, // ENSURE that final_ethertype is tied to ethertype field in METADATA ASSEMBLER
 
     output reg [5:0]     payload_bit_offset,
@@ -39,6 +41,12 @@ module frame_parser_header_datapath (
     output wire          fcs_ok    //only added so I can easily forward this line to metadata assembler, it's just the NOT of tuser, nothing more than that. It's perfectly OK to tie tuser to nothing on the top file, and feed through fcs_ok to metadata.
     
 );
+    // assigning vlan_id and vlan_pcp from vlan_TCI
+    reg [15:0]    vlan_TCI;
+    assign vlan_pcp = is_vlan_frame ? vlan_TCI[15:13] : 3'b0;
+    assign vlan_dei = is_vlan_frame ? vlan_TCI[12] : 1'b0;
+    assign vlan_id  = is_vlan_frame ? vlan_TCI[11:0]  : 12'b0;
+    
     // fwding t user
     assign tuser = out_tuser;
     assign fcs_ok = ~out_tuser;
@@ -134,8 +142,7 @@ module frame_parser_header_datapath (
 wire _unused = &{
     ena,
     out_tkeep,
-    out_tlast,
-    is_vlan_frame
+    out_tlast
 };
 
 endmodule
