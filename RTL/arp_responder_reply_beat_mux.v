@@ -48,12 +48,12 @@ module arp_responder_reply_beat_mux (
     */
 
     // Constants defined within the Ethernet II and ARP standards
-    localparam logic[15:0] Ethertype = 16'h0806;
-    localparam logic[15:0] HardwareType = 16'h0001;
-    localparam logic[15:0] ProtocolType = 16'h0800;
-    localparam logic[7:0] HardwareLength = 8'h06;
-    localparam logic[7:0] ProtocolLength = 8'h04;
-    localparam logic[15:0] Operation = 16'h0002;
+    localparam [15:0] Ethertype = 16'h0806;
+    localparam [15:0] HardwareType = 16'h0001;
+    localparam [15:0] ProtocolType = 16'h0800;
+    localparam [7:0] HardwareLength = 8'h06;
+    localparam [7:0] ProtocolLength = 8'h04;
+    localparam [15:0] Operation = 16'h0002;
 
     // Sequential behavior
     always @(posedge clk or negedge rst_n) begin
@@ -99,4 +99,5 @@ module arp_responder_reply_beat_mux (
     // - If the beat ID is valid (i.e. between 0 and 5 inclusive), then multiplex the desired segment
     // - Otherwise, output all zeroes to tell the TX serializer that they screwed up :/
     assign beat_data = (beat_idx <= 3'd5) ? reply_img[(383 - beat_idx*64) -: 64] : 64'h0;
+
 endmodule

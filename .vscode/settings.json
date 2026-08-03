@@ -1,5 +1,4 @@
 {
   "verilog.linting.linter": "verilator",
-  "verilog.formatting.verilogHDL.formatter": "verible-verilog-format",
-  "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)"
+  "verilog.formatting.verilogHDL.formatter": "verible-verilog-format"
 }
