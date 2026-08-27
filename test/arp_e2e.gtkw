@@ -1,0 +1,97 @@
+[*] GTKWave save file for the end-to-end ARP request -> reply trace.
+[*] Generate the matching dump with:
+[*]   make -B UNIT=frame_parser_arp_top WAVES=1 COCOTB_TEST_FILTER=test_arp_request_end_to_end
+[*] Then open with:
+[*]   gtkwave sim_build/frame_parser_arp_top/frame_parser_arp_top.fst arp_e2e.gtkw
+[dumpfile] "sim_build/frame_parser_arp_top/frame_parser_arp_top.fst"
+[timestart] 0
+[sst_width] 260
+[signals_width] 210
+[sst_expanded] 1
+[pattern_trace] 0
+@200
+-CLK/RST
+@28
+frame_parser_arp_top.clk
+frame_parser_arp_top.rst_n
+@200
+-1 MAC IN
+@22
+frame_parser_arp_top.s_tdata[63:0]
+frame_parser_arp_top.s_tkeep[7:0]
+@28
+frame_parser_arp_top.s_tvalid
+frame_parser_arp_top.s_tlast
+frame_parser_arp_top.s_tready
+@200
+-2 FSM
+@22
+frame_parser_arp_top.u_frame_control.present_state[2:0]
+frame_parser_arp_top.w_final_frame_len[13:0]
+@28
+frame_parser_arp_top.w_is_vlan_frame
+frame_parser_arp_top.drop
+@200
+-3 HEADER
+@22
+frame_parser_arp_top.w_dst_mac[47:0]
+frame_parser_arp_top.w_src_mac[47:0]
+frame_parser_arp_top.w_final_ethertype[15:0]
+frame_parser_arp_top.w_payload_bit_offset[5:0]
+@28
+frame_parser_arp_top.w_payload_valid
+@200
+-4 METADATA
+@22
+frame_parser_arp_top.metadata[144:0]
+@200
+-5 ALIGNED
+@22
+frame_parser_arp_top.wp_tdata[63:0]
+frame_parser_arp_top.wp_tkeep[7:0]
+@28
+frame_parser_arp_top.wp_tvalid
+frame_parser_arp_top.wp_tlast
+@200
+-6 SWAPPED
+@22
+frame_parser_arp_top.arp_tdata[63:0]
+frame_parser_arp_top.arp_tkeep[7:0]
+@28
+frame_parser_arp_top.arp_tvalid
+frame_parser_arp_top.arp_tlast
+@200
+-7 ARP FIELDS
+@22
+frame_parser_arp_top.u_arp_responder.w_htype[15:0]
+frame_parser_arp_top.u_arp_responder.w_ptype[15:0]
+frame_parser_arp_top.u_arp_responder.w_hlen[7:0]
+frame_parser_arp_top.u_arp_responder.w_plen[7:0]
+frame_parser_arp_top.u_arp_responder.w_opcode[15:0]
+frame_parser_arp_top.u_arp_responder.w_sha[47:0]
+frame_parser_arp_top.u_arp_responder.w_spa[31:0]
+frame_parser_arp_top.u_arp_responder.w_tpa[31:0]
+@28
+frame_parser_arp_top.u_arp_responder.w_capture_done
+@200
+-8 HANDSHAKE
+@28
+frame_parser_arp_top.u_arp_responder.w_fire
+frame_parser_arp_top.u_arp_responder.w_busy
+@22
+frame_parser_arp_top.u_arp_responder.w_beat_idx[2:0]
+@200
+-9 REPLY PRE-SWAP
+@22
+frame_parser_arp_top.w_reply_tdata[63:0]
+@200
+-10 REPLY OUT
+-  (8 beats, tkeep FF)
+@22
+frame_parser_arp_top.reply_tdata[63:0]
+frame_parser_arp_top.reply_tkeep[7:0]
+@28
+frame_parser_arp_top.reply_tvalid
+frame_parser_arp_top.reply_tlast
+frame_parser_arp_top.reply_tready
+[pattern_trace] 0
